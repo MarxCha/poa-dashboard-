@@ -49,7 +49,7 @@ export function Sidebar({
   userName = 'Usuario Demo',
   userRfc = 'RFC...',
 }: SidebarProps) {
-  const formatLastSync = (sync: string | null) => {
+  const formatLastSync = (sync: string | null | undefined) => {
     if (!sync) return 'Nunca'
     const date = new Date(sync)
     const now = new Date()
@@ -67,7 +67,7 @@ export function Sidebar({
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 h-16 border-b border-white/[0.06]">
-        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center flex-shrink-0">
+        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-accent-400 to-cyan-500 flex items-center justify-center flex-shrink-0">
           <Zap size={18} className="text-[#0a0f1a]" strokeWidth={2.5} />
         </div>
         {!collapsed && (
@@ -88,19 +88,19 @@ export function Sidebar({
         <div
           className={`mx-3 mt-4 mb-2 px-3 py-2.5 rounded-lg ${
             satConnected
-              ? 'bg-emerald-500/[0.08] border border-emerald-500/20'
+              ? 'bg-accent-500/[0.08] border border-accent-500/20'
               : 'bg-red-500/[0.08] border border-red-500/20'
           }`}
         >
           <div className="flex items-center gap-2">
             <div
               className={`w-2 h-2 rounded-full ${
-                satConnected ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'
+                satConnected ? 'bg-accent-400 animate-pulse' : 'bg-red-400'
               }`}
             />
             <span
               className={`text-[11px] font-medium tracking-wide uppercase ${
-                satConnected ? 'text-emerald-400' : 'text-red-400'
+                satConnected ? 'text-accent-400' : 'text-red-400'
               }`}
             >
               {satConnected ? 'SAT Conectado' : 'SAT Desconectado'}

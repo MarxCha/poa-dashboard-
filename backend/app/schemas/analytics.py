@@ -37,6 +37,8 @@ class SemaforoItem(BaseModel):
     nombre: str
     estado: str  # "verde" | "amarillo" | "rojo"
     detalle: str
+    ejemplo: Optional[str] = None
+    accion_recomendada: Optional[str] = None
 
 
 class ScoreComponent(BaseModel):

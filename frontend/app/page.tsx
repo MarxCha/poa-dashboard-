@@ -27,6 +27,11 @@ import { HealthScoreCard } from '@/components/dashboard/health-score-card'
 import { SemaforoFiscal } from '@/components/dashboard/semaforo-fiscal'
 import { CFOVirtual } from '@/components/dashboard/cfo-virtual'
 import { XMLDropZone } from '@/components/dashboard/xml-drop-zone'
+import { Predicciones } from '@/components/dashboard/predicciones'
+import { Credito } from '@/components/dashboard/credito'
+import { Configuracion } from '@/components/dashboard/configuracion'
+import { CFDIsTable } from '@/components/dashboard/cfdis-table'
+import { RecommendationsBanner } from '@/components/dashboard/recommendations-banner'
 import { useVoiceCommands } from '@/hooks/use-voice-commands'
 
 import {
@@ -43,7 +48,7 @@ import {
 } from '@/lib/api'
 
 type Scenario = 'A' | 'B' | 'C'
-type View = 'dashboard' | 'cfdis' | 'semaforo' | 'cfo' | 'predicciones' | 'credito'
+type View = 'dashboard' | 'cfdis' | 'semaforo' | 'cfo' | 'predicciones' | 'credito' | 'config'
 
 export default function Home() {
   // UI State
@@ -237,7 +242,7 @@ export default function Home() {
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
         >
-          <Loader2 className="w-10 h-10 text-emerald-400 animate-spin mx-auto" />
+          <Loader2 className="w-10 h-10 text-accent-400 animate-spin mx-auto" />
           <p className="text-white/40 mt-4">Cargando Sistema POA...</p>
         </motion.div>
       </div>
@@ -256,7 +261,7 @@ export default function Home() {
           <AlertTriangle className="w-12 h-12 text-red-400 mx-auto" />
           <h2 className="text-white text-lg font-semibold mt-4">Backend no disponible</h2>
           <p className="text-white/50 text-sm mt-2">{error}</p>
-          <code className="block mt-4 bg-white/5 p-3 rounded-lg text-emerald-400 text-sm">
+          <code className="block mt-4 bg-white/5 p-3 rounded-lg text-accent-400 text-sm">
             docker-compose up -d
           </code>
         </motion.div>
@@ -273,8 +278,8 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-[#0d1321] border border-white/[0.06] rounded-xl p-8 max-w-md text-center"
         >
-          <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto">
-            <RefreshCw className={`w-8 h-8 text-emerald-400 ${seeding ? 'animate-spin' : ''}`} />
+          <div className="w-16 h-16 rounded-2xl bg-accent-500/10 border border-accent-500/20 flex items-center justify-center mx-auto">
+            <RefreshCw className={`w-8 h-8 text-accent-400 ${seeding ? 'animate-spin' : ''}`} />
           </div>
           <h2 className="text-white text-lg font-semibold mt-4">Base de datos vacía</h2>
           <p className="text-white/50 text-sm mt-2">
@@ -283,7 +288,7 @@ export default function Home() {
           <button
             onClick={handleSeed}
             disabled={seeding}
-            className="mt-6 px-6 py-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-[#0a0f1a] font-semibold transition-colors disabled:opacity-50"
+            className="mt-6 px-6 py-3 rounded-lg bg-accent-500 hover:bg-accent-400 text-[#0a0f1a] font-semibold transition-colors disabled:opacity-50"
           >
             {seeding ? 'Generando...' : 'Sembrar Datos de Demo'}
           </button>
@@ -317,10 +322,10 @@ export default function Home() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 rounded-full bg-emerald-500/20 border border-emerald-500/30"
+              className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 rounded-full bg-accent-500/20 border border-accent-500/30"
             >
-              <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-emerald-400 text-sm font-medium">
+              <div className="w-3 h-3 rounded-full bg-accent-400 animate-pulse" />
+              <span className="text-accent-400 text-sm font-medium">
                 {transcript || 'Escuchando...'}
               </span>
             </motion.div>
@@ -355,7 +360,7 @@ export default function Home() {
                       onClick={isListening ? stopListening : startListening}
                       className={`p-2 rounded-lg border transition-colors ${
                         isListening
-                          ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
+                          ? 'bg-accent-500/20 border-accent-500/30 text-accent-400'
                           : 'bg-white/[0.06] border-white/[0.08] text-white/60 hover:bg-white/[0.1]'
                       }`}
                       title="Comandos de voz"
@@ -373,11 +378,18 @@ export default function Home() {
                     <Calendar size={14} /> Últimos 8 meses
                     <ChevronDown size={14} />
                   </button>
-                  <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[13px] hover:bg-emerald-500/30 transition-colors">
+                  <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-500/20 border border-accent-500/30 text-accent-400 text-[13px] hover:bg-accent-500/30 transition-colors">
                     <RefreshCw size={14} /> Sincronizar SAT
                   </button>
                 </div>
               </div>
+
+              {/* Recommendations Banner */}
+              <RecommendationsBanner
+                healthScore={dashboardStats.health_score}
+                semaforo={dashboardStats.semaforo}
+                onNavigate={(view) => setActiveView(view as View)}
+              />
 
               {/* Draggable KPI Grid */}
               <DraggableKPIGrid items={kpiItems} />
@@ -504,6 +516,11 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+
+              {/* CFDIs Table */}
+              {currentCompany && (
+                <CFDIsTable companyId={currentCompany.id} />
+              )}
             </motion.div>
           )}
 
@@ -516,14 +533,9 @@ export default function Home() {
               exit={{ opacity: 0, y: -20 }}
             >
               <SemaforoFiscal
-                alerts={dashboardStats.semaforo.map((s) => ({
-                  ...s,
-                  descripcion:
-                    s.estado !== 'verde'
-                      ? 'Haz clic para ver más detalles y acciones recomendadas.'
-                      : undefined,
-                }))}
+                alerts={dashboardStats.semaforo}
                 companyName={currentCompany?.razon_social}
+                onNavigate={(view) => setActiveView(view as View)}
               />
             </motion.div>
           )}
@@ -544,26 +556,46 @@ export default function Home() {
             </motion.div>
           )}
 
-          {/* Placeholder for other views */}
-          {(activeView === 'predicciones' || activeView === 'credito') && (
+          {/* Predicciones View */}
+          {activeView === 'predicciones' && currentCompany && (
             <motion.div
-              key={activeView}
+              key="predicciones"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="flex items-center justify-center h-[60vh]"
             >
-              <div className="text-center">
-                <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/[0.06] flex items-center justify-center mx-auto">
-                  <span className="text-2xl">🚧</span>
-                </div>
-                <h2 className="text-white text-lg font-semibold mt-4">
-                  Vista en construcción
-                </h2>
-                <p className="text-white/40 text-sm mt-2">
-                  {activeView.charAt(0).toUpperCase() + activeView.slice(1)} estará disponible pronto.
-                </p>
-              </div>
+              <Predicciones
+                companyId={currentCompany.id}
+                companyName={currentCompany.razon_social}
+              />
+            </motion.div>
+          )}
+
+          {/* Crédito View */}
+          {activeView === 'credito' && currentCompany && (
+            <motion.div
+              key="credito"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <Credito
+                companyId={currentCompany.id}
+                companyName={currentCompany.razon_social}
+                onNavigateToSemaforo={() => setActiveView('semaforo')}
+              />
+            </motion.div>
+          )}
+
+          {/* Configuración View */}
+          {activeView === 'config' && (
+            <motion.div
+              key="config"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <Configuracion />
             </motion.div>
           )}
         </AnimatePresence>

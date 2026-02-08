@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 import random
 import uuid
+import json
 from sqlalchemy.orm import Session
 import hashlib
 
@@ -186,23 +187,33 @@ def generate_health_score(db: Session, company: Company, score: int) -> HealthSc
 
 
 def generate_fiscal_alerts(db: Session, company: Company, scenario: str) -> list[FiscalAlert]:
-    """Genera alertas fiscales según el escenario"""
+    """Genera alertas fiscales según el escenario con ejemplos contextuales"""
     alerts = []
 
-    # Alertas base (siempre verdes)
+    # Alertas base (siempre verdes) con ejemplos
     base_alerts = [
-        (AlertType.DECLARACION, AlertSeverity.VERDE, "Declaraciones al corriente", "Última: Enero 2026"),
-        (AlertType.CANCELACION, AlertSeverity.VERDE, "CFDIs sin cancelar indebidamente", "0 CFDIs irregulares"),
-        (AlertType.CONCILIACION, AlertSeverity.VERDE, "Diferencias en conciliación", "$0 diferencias detectadas"),
+        (AlertType.DECLARACION, AlertSeverity.VERDE, "Declaraciones al corriente", "Última: Enero 2026", {
+            "ejemplo": "Todas tus declaraciones mensuales de ISR e IVA están presentadas a tiempo. La última declaración de Enero 2026 fue aceptada el 17 de febrero.",
+            "accion_recomendada": "Mantén este ritmo. Programa recordatorios para el día 15 de cada mes.",
+        }),
+        (AlertType.CANCELACION, AlertSeverity.VERDE, "CFDIs sin cancelar indebidamente", "0 CFDIs irregulares", {
+            "ejemplo": "En los últimos 8 meses, todas las cancelaciones de CFDIs fueron por motivos válidos (errores de captura) y están debidamente justificadas.",
+            "accion_recomendada": "No se requiere acción. Tu tasa de cancelación es menor al 1%.",
+        }),
+        (AlertType.CONCILIACION, AlertSeverity.VERDE, "Diferencias en conciliación", "$0 diferencias detectadas", {
+            "ejemplo": "La conciliación entre tus CFDIs emitidos y los reportados al SAT coincide al 100%. No hay discrepancias entre contabilidad y facturación.",
+            "accion_recomendada": "Realiza conciliaciones mensuales para mantener este estatus.",
+        }),
     ]
 
-    for alert_type, severity, titulo, detalle in base_alerts:
+    for alert_type, severity, titulo, detalle, meta in base_alerts:
         alert = FiscalAlert(
             company_id=company.id,
             alert_type=alert_type,
             severity=severity,
             titulo=titulo,
             detalle=detalle,
+            metadata_json=json.dumps(meta, ensure_ascii=False),
         )
         alerts.append(alert)
 
@@ -215,6 +226,10 @@ def generate_fiscal_alerts(db: Session, company: Company, scenario: str) -> list
             severity=AlertSeverity.VERDE,
             titulo="Sin proveedores EFOS",
             detalle="0 proveedores en lista negra",
+            metadata_json=json.dumps({
+                "ejemplo": "Ninguno de tus 8 proveedores activos aparece en la lista EFOS del SAT (Art. 69-B). Último check: 6 de febrero 2026.",
+                "accion_recomendada": "POA revisa automáticamente la lista EFOS cada semana. Sin acción requerida.",
+            }, ensure_ascii=False),
         ))
         alerts.append(FiscalAlert(
             company_id=company.id,
@@ -222,10 +237,14 @@ def generate_fiscal_alerts(db: Session, company: Company, scenario: str) -> list
             severity=AlertSeverity.VERDE,
             titulo="Diversificación de clientes",
             detalle="Top cliente = 18% ingresos",
+            metadata_json=json.dumps({
+                "ejemplo": "Tu cliente principal (Grupo Elektra SA de CV) representa solo el 18% de tus ingresos. Tienes 10 clientes activos con distribución saludable.",
+                "accion_recomendada": "Mantén la diversificación. Ideal es que ningún cliente supere el 25% de tus ingresos.",
+            }, ensure_ascii=False),
         ))
 
     elif scenario == "B":
-        # Scale-up: Alertas amarillas
+        # Scale-up: Alertas amarillas con ejemplos detallados
         alerts.append(FiscalAlert(
             company_id=company.id,
             alert_type=AlertType.EFOS,
@@ -233,6 +252,10 @@ def generate_fiscal_alerts(db: Session, company: Company, scenario: str) -> list
             titulo="Proveedor en revisión EFOS",
             detalle="Logística Express MX (LEM120601MN7) en lista Art. 69-B",
             descripcion="El proveedor aparece en la lista de presuntos publicada el 15 de enero 2026. Tienes 16 CFDIs recibidos por un total de $520,000 MXN.",
+            metadata_json=json.dumps({
+                "ejemplo": "Tu proveedor Logística Express MX (RFC: LEM120601MN7) aparece en la lista EFOS desde Enero 2026. Tienes 16 CFDIs por $520,000 con este proveedor en los últimos 6 meses.",
+                "accion_recomendada": "Solicita comprobantes alternativos y considera cambiar de proveedor antes del cierre fiscal Q1. Revisa si puedes deducir esos gastos con documentación soporte.",
+            }, ensure_ascii=False),
         ))
         alerts.append(FiscalAlert(
             company_id=company.id,
@@ -241,16 +264,24 @@ def generate_fiscal_alerts(db: Session, company: Company, scenario: str) -> list
             titulo="Alta concentración de clientes",
             detalle="Top cliente = 32% ingresos",
             descripcion="Se recomienda diversificar la cartera de clientes para reducir riesgo.",
+            metadata_json=json.dumps({
+                "ejemplo": "CEMEX SAB de CV representa el 32% de tus ingresos mensuales ($576,000 de $1.8M). Si este cliente reduce sus pedidos, tu flujo se ve comprometido.",
+                "accion_recomendada": "Diversifica tu cartera de clientes. Objetivo: que ningún cliente supere el 25%. Contacta al menos 3 prospectos nuevos este mes.",
+            }, ensure_ascii=False),
         ))
 
     elif scenario == "C":
-        # Despacho: Mix
+        # Despacho: Mix con ejemplos
         alerts.append(FiscalAlert(
             company_id=company.id,
             alert_type=AlertType.EFOS,
             severity=AlertSeverity.VERDE,
             titulo="Sin proveedores EFOS",
             detalle="0 proveedores en lista negra",
+            metadata_json=json.dumps({
+                "ejemplo": "Ninguno de los proveedores de tus 20 clientes aparece en la lista EFOS. Revisión automática semanal activa.",
+                "accion_recomendada": "Como despacho contable, revisa la lista EFOS para cada nuevo proveedor de tus clientes al onboardear.",
+            }, ensure_ascii=False),
         ))
         alerts.append(FiscalAlert(
             company_id=company.id,
@@ -258,6 +289,10 @@ def generate_fiscal_alerts(db: Session, company: Company, scenario: str) -> list
             severity=AlertSeverity.AMARILLO,
             titulo="Concentración moderada",
             detalle="Top cliente = 25% ingresos",
+            metadata_json=json.dumps({
+                "ejemplo": "Tu cliente principal del despacho genera el 25% de tus honorarios mensuales ($50,000 de $200,000). Esto está en el límite recomendado.",
+                "accion_recomendada": "Busca atraer 2-3 clientes nuevos al despacho para bajar la concentración a menos del 20%.",
+            }, ensure_ascii=False),
         ))
 
     db.add_all(alerts)

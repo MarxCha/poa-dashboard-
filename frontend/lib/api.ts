@@ -35,6 +35,8 @@ export interface SemaforoItem {
   nombre: string
   estado: 'verde' | 'amarillo' | 'rojo'
   detalle: string
+  ejemplo?: string
+  accion_recomendada?: string
 }
 
 export interface PieChartData {
@@ -144,6 +146,149 @@ export async function sendCFOMessage(message: string, companyId: number): Promis
     { method: 'POST' }
   )
   if (!res.ok) throw new Error('Failed to send message')
+  return res.json()
+}
+
+// Predictions
+export interface Projection {
+  mes: string
+  ingresos_proyectados: number
+  egresos_proyectados: number
+  flujo_neto: number
+  alerta: string | null
+  confianza: number
+}
+
+export interface SeasonalMonth {
+  mes: string
+  factor: number
+  nota: string
+}
+
+export interface PredictionsData {
+  projections: Projection[]
+  kpis: {
+    ingresos_3m: number
+    egresos_3m: number
+    flujo_neto_3m: number
+    meses_riesgo: number
+    revenue_trend: string
+    expense_trend: string
+  }
+  seasonality: SeasonalMonth[]
+  risk_assessment: {
+    nivel: string
+    factores: string[]
+  }
+  company_name: string
+}
+
+export async function getPredictions(companyId: number): Promise<PredictionsData> {
+  const res = await fetch(`${API_URL}/api/predictions/${companyId}`)
+  if (!res.ok) throw new Error('Failed to fetch predictions')
+  return res.json()
+}
+
+// Credit
+export interface FinancingOption {
+  nombre: string
+  proveedor: string
+  monto_min: number
+  monto_max: number
+  tasa: string
+  plazo: string
+  requisitos: string[]
+  estado: string
+  beneficio_partner: string
+}
+
+export interface PartnerLevel {
+  nombre: string
+  requisito: string
+  descuento: string
+  comision_referidos: string
+  beneficios: string[]
+  ejemplo?: string
+}
+
+export interface PlanInfo {
+  nombre: string
+  precio: number
+  precio_label: string
+  features: string[]
+  es_actual: boolean
+  popular?: boolean
+}
+
+export interface OnboardingStep {
+  paso: number
+  titulo: string
+  descripcion: string
+  completado: boolean
+}
+
+export interface CreditData {
+  readiness: {
+    nivel: string
+    score: number
+    recommendation: string
+    health_score: number
+  }
+  financing_options: FinancingOption[]
+  partners_program: {
+    niveles: PartnerLevel[]
+    nivel_actual: string
+  }
+  plans: PlanInfo[]
+  company_name: string
+  onboarding_steps: OnboardingStep[]
+}
+
+export async function getCreditInfo(companyId: number): Promise<CreditData> {
+  const res = await fetch(`${API_URL}/api/credit/${companyId}`)
+  if (!res.ok) throw new Error('Failed to fetch credit info')
+  return res.json()
+}
+
+// CFDIs
+export interface CFDIItem {
+  id: number
+  uuid: string
+  folio: string | null
+  serie: string | null
+  tipo_comprobante: 'ingreso' | 'egreso'
+  estado: 'vigente' | 'cancelado'
+  emisor_rfc: string
+  emisor_nombre: string | null
+  receptor_rfc: string
+  receptor_nombre: string | null
+  subtotal: number
+  total: number
+  iva: number
+  moneda: string
+  fecha_emision: string
+  fecha_timbrado: string | null
+  uso_cfdi: string | null
+  created_at: string
+}
+
+export interface CFDIListResponse {
+  total: number
+  page: number
+  per_page: number
+  cfdis: CFDIItem[]
+}
+
+export async function getCFDIs(
+  companyId: number,
+  page: number = 1,
+  perPage: number = 10,
+  tipo?: 'ingreso' | 'egreso'
+): Promise<CFDIListResponse> {
+  let url = `${API_URL}/api/companies/${companyId}/cfdis?page=${page}&per_page=${perPage}`
+  if (tipo) url += `&tipo=${tipo}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('Failed to fetch CFDIs')
   return res.json()
 }
 

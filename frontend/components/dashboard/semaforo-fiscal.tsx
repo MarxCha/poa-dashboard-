@@ -1,16 +1,20 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   CheckCircle2,
   AlertTriangle,
   XCircle,
   ChevronRight,
+  ChevronDown,
   Shield,
   FileWarning,
   Users,
   Clock,
   FileCheck,
+  Info,
+  ArrowRight,
 } from 'lucide-react'
 
 interface SemaforoAlert {
@@ -18,11 +22,14 @@ interface SemaforoAlert {
   estado: 'verde' | 'amarillo' | 'rojo'
   detalle: string
   descripcion?: string
+  ejemplo?: string
+  accion_recomendada?: string
 }
 
 interface SemaforoFiscalProps {
   alerts: SemaforoAlert[]
   companyName?: string
+  onNavigate?: (view: string) => void
 }
 
 const statusConfig = {
@@ -68,7 +75,9 @@ function getCategoryIcon(nombre: string) {
   return Shield
 }
 
-export function SemaforoFiscal({ alerts, companyName }: SemaforoFiscalProps) {
+export function SemaforoFiscal({ alerts, companyName, onNavigate }: SemaforoFiscalProps) {
+  const [expandedAlert, setExpandedAlert] = useState<number | null>(null)
+
   const summary = {
     verde: alerts.filter((a) => a.estado === 'verde').length,
     amarillo: alerts.filter((a) => a.estado === 'amarillo').length,
@@ -77,6 +86,10 @@ export function SemaforoFiscal({ alerts, companyName }: SemaforoFiscalProps) {
 
   const overallStatus = summary.rojo > 0 ? 'rojo' : summary.amarillo > 0 ? 'amarillo' : 'verde'
   const overallConfig = statusConfig[overallStatus]
+
+  const toggleExpand = (index: number) => {
+    setExpandedAlert(expandedAlert === index ? null : index)
+  }
 
   return (
     <div className="space-y-6">
@@ -133,6 +146,8 @@ export function SemaforoFiscal({ alerts, companyName }: SemaforoFiscalProps) {
         {alerts.map((alert, index) => {
           const config = statusConfig[alert.estado]
           const CategoryIcon = getCategoryIcon(alert.nombre)
+          const isExpanded = expandedAlert === index
+          const hasDetails = alert.ejemplo || alert.accion_recomendada
 
           return (
             <motion.div
@@ -140,7 +155,8 @@ export function SemaforoFiscal({ alerts, companyName }: SemaforoFiscalProps) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className={`${config.bg} border ${config.border} rounded-xl p-5 hover:scale-[1.02] transition-transform cursor-pointer group`}
+              className={`${config.bg} border ${config.border} rounded-xl p-5 transition-all cursor-pointer group`}
+              onClick={() => hasDetails && toggleExpand(index)}
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
@@ -152,25 +168,74 @@ export function SemaforoFiscal({ alerts, companyName }: SemaforoFiscalProps) {
                     <p className={`text-sm ${config.text}`}>{alert.detalle}</p>
                   </div>
                 </div>
-                <div className={`flex items-center gap-2 px-2 py-1 rounded-full ${config.bg} border ${config.border}`}>
-                  <div className={`w-2 h-2 rounded-full ${config.dot}`} />
-                  <span className={`text-xs font-medium ${config.text}`}>
-                    {config.label}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <div className={`flex items-center gap-2 px-2 py-1 rounded-full ${config.bg} border ${config.border}`}>
+                    <div className={`w-2 h-2 rounded-full ${config.dot}`} />
+                    <span className={`text-xs font-medium ${config.text}`}>
+                      {config.label}
+                    </span>
+                  </div>
+                  {hasDetails && (
+                    <div className={`${config.text} transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+                      <ChevronDown size={16} />
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {alert.descripcion && (
-                <p className="text-white/40 text-sm mt-4 pl-13">
-                  {alert.descripcion}
-                </p>
-              )}
+              {/* Expandable Details */}
+              <AnimatePresence>
+                {isExpanded && hasDetails && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-4 pt-4 border-t border-white/[0.06] space-y-3">
+                      {alert.ejemplo && (
+                        <div className="flex items-start gap-2">
+                          <Info size={14} className="text-cyan-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-white/30 text-[10px] uppercase tracking-wider mb-1">Ejemplo</p>
+                            <p className="text-white/60 text-sm">{alert.ejemplo}</p>
+                          </div>
+                        </div>
+                      )}
+                      {alert.accion_recomendada && (
+                        <div className="flex items-start gap-2">
+                          <ArrowRight size={14} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-white/30 text-[10px] uppercase tracking-wider mb-1">Acción Recomendada</p>
+                            <p className="text-white/60 text-sm">{alert.accion_recomendada}</p>
+                          </div>
+                        </div>
+                      )}
+                      {alert.estado !== 'verde' && onNavigate && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onNavigate('cfdis')
+                          }}
+                          className={`mt-2 flex items-center gap-1 text-xs font-medium ${config.text} hover:underline`}
+                        >
+                          Ir a CFDIs <ArrowRight size={12} />
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-              <div className="flex items-center justify-end mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <span className={`text-sm ${config.text} flex items-center gap-1`}>
-                  Ver detalles <ChevronRight size={14} />
-                </span>
-              </div>
+              {/* Hover hint (only when not expanded) */}
+              {!isExpanded && hasDetails && (
+                <div className="flex items-center justify-end mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className={`text-xs ${config.text} flex items-center gap-1`}>
+                    Ver detalles <ChevronRight size={12} />
+                  </span>
+                </div>
+              )}
             </motion.div>
           )
         })}
