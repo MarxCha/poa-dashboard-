@@ -12,6 +12,9 @@ import {
   Loader2,
   Mic,
   MicOff,
+  Volume2,
+  VolumeX,
+  Square,
 } from 'lucide-react'
 
 interface Message {
@@ -51,7 +54,41 @@ export function CFOVirtual({ companyId, companyName, onSendMessage }: CFOVirtual
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isListening, setIsListening] = useState(false)
+  const [ttsEnabled, setTtsEnabled] = useState(true)
+  const [speakingId, setSpeakingId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const stripMarkdown = (text: string) =>
+    text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/_([^_]+)_/g, '$1').replace(/🤖|📊|⚠️|💡|📈|📉|✅|❌|🔴|🟡|🟢/g, '')
+
+  const speakText = (text: string, messageId: string) => {
+    if (!('speechSynthesis' in window)) return
+    window.speechSynthesis.cancel()
+
+    if (speakingId === messageId) {
+      setSpeakingId(null)
+      return
+    }
+
+    const utterance = new SpeechSynthesisUtterance(stripMarkdown(text))
+    utterance.lang = 'es-MX'
+    utterance.rate = 1.0
+    utterance.pitch = 1.0
+
+    const voices = window.speechSynthesis.getVoices()
+    const spanishVoice = voices.find(v => v.lang.startsWith('es'))
+    if (spanishVoice) utterance.voice = spanishVoice
+
+    utterance.onend = () => setSpeakingId(null)
+    utterance.onerror = () => setSpeakingId(null)
+
+    setSpeakingId(messageId)
+    window.speechSynthesis.speak(utterance)
+  }
+
+  useEffect(() => {
+    return () => { window.speechSynthesis?.cancel() }
+  }, [])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -84,6 +121,7 @@ export function CFOVirtual({ companyId, companyName, onSendMessage }: CFOVirtual
       }
 
       setMessages((prev) => [...prev, assistantMessage])
+      if (ttsEnabled) speakText(response.response, assistantMessage.id)
     } catch (error) {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -143,6 +181,23 @@ export function CFOVirtual({ companyId, companyName, onSendMessage }: CFOVirtual
               Inteligencia financiera conversacional · {companyName}
             </p>
           </div>
+          <button
+            onClick={() => {
+              setTtsEnabled(!ttsEnabled)
+              if (!ttsEnabled === false) {
+                window.speechSynthesis?.cancel()
+                setSpeakingId(null)
+              }
+            }}
+            className={`ml-auto p-2 rounded-lg border transition-colors ${
+              ttsEnabled
+                ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
+                : 'bg-white/[0.06] border-white/[0.08] text-white/40'
+            }`}
+            title={ttsEnabled ? 'Audio activado' : 'Audio desactivado'}
+          >
+            {ttsEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+          </button>
         </div>
       </div>
 
@@ -195,6 +250,20 @@ export function CFOVirtual({ companyId, companyName, onSendMessage }: CFOVirtual
                     <AlertTriangle size={12} />
                     {message.disclaimer}
                   </p>
+                )}
+
+                {message.role === 'assistant' && ttsEnabled && (
+                  <button
+                    onClick={() => speakText(message.content, message.id)}
+                    className={`mt-2 p-1.5 rounded-md transition-colors ${
+                      speakingId === message.id
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : 'text-white/30 hover:text-white/60 hover:bg-white/[0.06]'
+                    }`}
+                    title={speakingId === message.id ? 'Detener' : 'Escuchar'}
+                  >
+                    {speakingId === message.id ? <Square size={14} /> : <Volume2 size={14} />}
+                  </button>
                 )}
               </div>
 

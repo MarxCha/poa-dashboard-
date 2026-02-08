@@ -1,23 +1,22 @@
-# Backend Dockerfile - FastAPI
-FROM python:3.12-slim
+# Backend Dockerfile - FastAPI (multi-stage)
 
+# ── Base ──
+FROM python:3.12-slim AS base
 WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Python dependencies
+RUN apt-get update && apt-get install -y gcc libpq-dev curl && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# ── Development ──
+FROM base AS development
 COPY . .
-
-# Expose port
 EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# ── Production ──
+FROM base AS production
+COPY . .
+RUN adduser --disabled-password --no-create-home appuser && chown -R appuser:appuser /app
+USER appuser
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

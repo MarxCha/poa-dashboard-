@@ -23,6 +23,7 @@ interface SidebarProps {
   lastSync?: string | null
   userName?: string
   userRfc?: string
+  onLogout?: () => void
 }
 
 const navItems = [
@@ -48,6 +49,7 @@ export function Sidebar({
   lastSync,
   userName = 'Usuario Demo',
   userRfc = 'RFC...',
+  onLogout,
 }: SidebarProps) {
   const formatLastSync = (sync: string | null | undefined) => {
     if (!sync) return 'Nunca'
@@ -168,6 +170,15 @@ export function Sidebar({
               <p className="text-white text-[12px] font-medium truncate">{userName}</p>
               <p className="text-white/30 text-[11px] truncate">{userRfc}</p>
             </div>
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="text-white/30 hover:text-white/60 text-[11px] transition-colors"
+                title="Cerrar sesión"
+              >
+                Salir
+              </button>
+            )}
           </div>
         )}
       </div>

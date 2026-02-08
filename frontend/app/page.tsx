@@ -32,6 +32,7 @@ import { Credito } from '@/components/dashboard/credito'
 import { Configuracion } from '@/components/dashboard/configuracion'
 import { CFDIsTable } from '@/components/dashboard/cfdis-table'
 import { RecommendationsBanner } from '@/components/dashboard/recommendations-banner'
+import { LoginScreen } from '@/components/auth/login-screen'
 import { useVoiceCommands } from '@/hooks/use-voice-commands'
 
 import {
@@ -42,15 +43,53 @@ import {
   getHealthScore,
   sendCFOMessage,
   formatMXN,
+  authGetMe,
   DashboardStats,
   Company,
   ScoreComponent,
+  AuthUser,
 } from '@/lib/api'
 
 type Scenario = 'A' | 'B' | 'C'
 type View = 'dashboard' | 'cfdis' | 'semaforo' | 'cfo' | 'predicciones' | 'credito' | 'config'
 
 export default function Home() {
+  // Auth State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null)
+
+  // Check for existing token on mount
+  useEffect(() => {
+    const token = localStorage.getItem('poa_token')
+    const savedUser = localStorage.getItem('poa_user')
+    if (token && savedUser) {
+      setAuthUser(JSON.parse(savedUser))
+      setIsAuthenticated(true)
+    } else if (localStorage.getItem('poa_demo_mode') === 'true') {
+      setIsAuthenticated(true)
+    } else {
+      setIsAuthenticated(false)
+    }
+  }, [])
+
+  const handleLogin = (token: string, user: AuthUser) => {
+    setAuthUser(user)
+    setIsAuthenticated(true)
+  }
+
+  const handleSkipAuth = () => {
+    localStorage.setItem('poa_demo_mode', 'true')
+    setIsAuthenticated(true)
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('poa_token')
+    localStorage.removeItem('poa_user')
+    localStorage.removeItem('poa_demo_mode')
+    setAuthUser(null)
+    setIsAuthenticated(false)
+  }
+
   // UI State
   const [activeView, setActiveView] = useState<View>('dashboard')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -233,6 +272,19 @@ export default function Home() {
       ]
     : []
 
+  // Auth gate
+  if (isAuthenticated === null) {
+    return (
+      <div className="min-h-screen bg-[#070b14] flex items-center justify-center">
+        <Loader2 className="w-10 h-10 text-emerald-400 animate-spin" />
+      </div>
+    )
+  }
+
+  if (isAuthenticated === false) {
+    return <LoginScreen onLogin={handleLogin} onSkip={handleSkipAuth} />
+  }
+
   // Loading state
   if (loading && !dashboardStats) {
     return (
@@ -306,8 +358,9 @@ export default function Home() {
         setCollapsed={setSidebarCollapsed}
         satConnected={currentCompany?.sat_connected}
         lastSync={dashboardStats?.last_sync}
-        userName={currentCompany?.razon_social?.split(' ').slice(0, 2).join(' ')}
+        userName={authUser?.full_name || currentCompany?.razon_social?.split(' ').slice(0, 2).join(' ')}
         userRfc={currentCompany?.rfc}
+        onLogout={handleLogout}
       />
 
       <main

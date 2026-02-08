@@ -292,6 +292,48 @@ export async function getCFDIs(
   return res.json()
 }
 
+// Auth
+export interface AuthUser {
+  id: number
+  email: string
+  full_name: string
+  role: string
+}
+
+export interface AuthResponse {
+  access_token: string
+  token_type: string
+  user: AuthUser
+}
+
+export async function authRegister(email: string, password: string, fullName: string): Promise<AuthResponse> {
+  const params = new URLSearchParams({ email, password, full_name: fullName })
+  const res = await fetch(`${API_URL}/api/auth/register?${params}`, { method: 'POST' })
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(err.detail || 'Error al registrar')
+  }
+  return res.json()
+}
+
+export async function authLogin(email: string, password: string): Promise<AuthResponse> {
+  const params = new URLSearchParams({ email, password })
+  const res = await fetch(`${API_URL}/api/auth/login?${params}`, { method: 'POST' })
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(err.detail || 'Error al iniciar sesión')
+  }
+  return res.json()
+}
+
+export async function authGetMe(token: string): Promise<AuthUser> {
+  const res = await fetch(`${API_URL}/api/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('No autenticado')
+  return res.json()
+}
+
 // Format helpers
 export function formatMXN(n: number): string {
   return new Intl.NumberFormat('es-MX', {

@@ -4,17 +4,21 @@ Capa de Inteligencia Financiera Automatizada
 """
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from typing import Optional
 from datetime import datetime, timedelta
 from decimal import Decimal
+from jose import JWTError, jwt
+import bcrypt
 import json
 
 from app.config import settings
 from app.database import engine, get_db, Base
 from app.models import User, Company, CFDI, FiscalAlert, HealthScore
 from app.models.cfdi import TipoCFDI, EstadoCFDI
+from app.models.user import UserRole
 from app.schemas.analytics import (
     DashboardStats,
     RevenueData,
@@ -50,6 +54,148 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ═══════════════════════════════════════════════
+# Auth Utilities
+# ═══════════════════════════════════════════════
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def get_current_user(
+    token: Optional[str] = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    """Returns current user or None (non-blocking for public endpoints)."""
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id_str = payload.get("sub")
+        if user_id_str is None:
+            return None
+        user_id = int(user_id_str)
+    except (JWTError, ValueError):
+        return None
+    return db.query(User).filter(User.id == user_id).first()
+
+
+def require_auth(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> User:
+    """Strict auth dependency — raises 401 if not authenticated."""
+    if not token:
+        raise HTTPException(status_code=401, detail="No autenticado")
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id_str = payload.get("sub")
+        if user_id_str is None:
+            raise HTTPException(status_code=401, detail="Token inválido")
+        user_id = int(user_id_str)
+    except (JWTError, ValueError):
+        raise HTTPException(status_code=401, detail="Token inválido")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Usuario no encontrado o inactivo")
+    return user
+
+
+# ═══════════════════════════════════════════════
+# Auth Endpoints
+# ═══════════════════════════════════════════════
+
+@app.post("/api/auth/register")
+def register(
+    email: str = Query(...),
+    password: str = Query(..., min_length=6),
+    full_name: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    """Registrar nuevo usuario."""
+    existing = db.query(User).filter(User.email == email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="El email ya está registrado")
+
+    user = User(
+        email=email,
+        hashed_password=hash_password(password),
+        full_name=full_name,
+        role=UserRole.OWNER,
+        is_active=True,
+        is_verified=False,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    token = create_access_token(data={"sub": str(user.id)})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": user.role.value,
+        },
+    }
+
+
+@app.post("/api/auth/login")
+def login(
+    email: str = Query(...),
+    password: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    """Iniciar sesión y obtener token JWT."""
+    user = db.query(User).filter(User.email == email).first()
+    if not user or not verify_password(password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Credenciales incorrectas")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Cuenta desactivada")
+
+    token = create_access_token(data={"sub": str(user.id)})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": user.role.value,
+        },
+    }
+
+
+@app.get("/api/auth/me")
+def get_me(current_user: User = Depends(require_auth)):
+    """Obtener perfil del usuario autenticado."""
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "role": current_user.role.value,
+        "is_active": current_user.is_active,
+        "is_verified": current_user.is_verified,
+        "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+    }
 
 
 # ═══════════════════════════════════════════════
