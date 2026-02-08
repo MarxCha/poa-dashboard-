@@ -2,36 +2,41 @@
 
 Capa de inteligencia que *lee* datos del SAT, *interpreta* con IA en español, y *predice* salud financiera para PyMEs mexicanas.
 
+**Status:** MVP Complete
+
 ## Quick Start
 
-### 1. Levantar servicios con Docker
+### Option 1: Setup Script (Recommended)
 
 ```bash
-docker-compose up -d
+git clone https://github.com/MarxCha/poa-dashboard-.git
+cd poa-dashboard-
+chmod +x setup.sh
+./setup.sh
 ```
 
-Esto levanta:
-- **PostgreSQL** en `localhost:5432`
-- **FastAPI Backend** en `localhost:8000`
-- **Next.js Frontend** en `localhost:3000`
-
-### 2. Sembrar datos de demo
+### Option 2: Manual Setup
 
 ```bash
-# Todos los escenarios (A, B, C)
-curl -X POST http://localhost:8000/api/seed
+# Backend
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python -c "from app.database import init_db; init_db()"
+python seed_data.py
+uvicorn app.main:app --reload --port 8000 &
 
-# Solo un escenario específico
-curl -X POST "http://localhost:8000/api/seed?scenario=A"
-curl -X POST "http://localhost:8000/api/seed?scenario=B"
-curl -X POST "http://localhost:8000/api/seed?scenario=C"
+# Frontend (new terminal)
+cd frontend
+npm install
+npm run dev
 ```
 
-### 3. Acceder a la aplicación
+### Access the Application
 
-- **Frontend:** http://localhost:3000
-- **API Docs:** http://localhost:8000/docs
-- **ReDoc:** http://localhost:8000/redoc
+- **Frontend:** http://localhost:3001
+- **Backend API:** http://localhost:8000/docs
 
 ---
 
@@ -132,14 +137,19 @@ npm run dev
 
 - [x] Estructura monorepo
 - [x] Backend FastAPI con 7 módulos
-- [x] PostgreSQL schema
-- [x] Motor de semillas (3 escenarios)
-- [x] Docker Compose
-- [ ] Dashboard Bento-Grid con dnd-kit
-- [ ] Framer Motion animations
-- [ ] Web Speech API
-- [ ] Parser XML CFDI
-- [ ] Tests Playwright
+- [x] SQLite database (dev)
+- [x] Motor de semillas (3 escenarios, 10,536 CFDIs)
+- [x] Dashboard Bento-Grid con dnd-kit
+- [x] Framer Motion animations
+- [x] Web Speech API (Voice Commands)
+- [x] XML Drop Zone para CFDIs
+- [x] Semáforo Fiscal con alertas
+- [x] CFO Virtual chat
+- [ ] Vista Predicciones
+- [ ] Vista Crédito
+- [ ] Autenticación JWT
+- [ ] Integración SAT real
+- [ ] Deploy producción
 
 ---
 
